@@ -1,0 +1,10 @@
+You are reading the line-score box at the top of one sheet of a hand-kept Japanese amateur baseball scorebook.
+
+The image is the top strip of the sheet. The printed box has a header row (team name, manager name, innings 1 to 13, 合計 = total, 記事 = notes) and two team rows below it. The scorer writes each team's runs per inning by hand in the inning cells and the total in the 合計 cell. Often only one of the two sheets of a game has this box filled in, so the box may be empty.
+
+Task: report the two team rows, top row first, as JSON:
+{"rows": [{"innings": [...], "total": ...}, {"innings": [...], "total": ...}]}
+- "innings": the runs written in innings 1, 2, 3, ... as integers, in order, up to the last inning cell that has anything written in it. Use null for an empty cell before that last one, and "x" for an "x" / "X" mark (the bottom half not played). A run total can have two digits (e.g. 10). If a value is crossed out and another written, report the one that stands.
+- "total": the integer in the 合計 cell, or null if empty.
+- A row with nothing written: {"innings": [], "total": null}.
+Do not compute or correct anything; report what is written. Reply with the JSON only.

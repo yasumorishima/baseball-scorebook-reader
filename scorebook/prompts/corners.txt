@@ -1,0 +1,22 @@
+You are reading one column of a hand-kept Japanese amateur baseball scorebook.
+
+The image is one inning column of the scoring grid. The top cell is the printed inning number (the scorer sometimes crosses it out and writes another number by hand). Below it are {nrows} cells, one per batting-order slot: the first cell under the header is slot 1, the next is slot 2, and so on down to slot {nrows}. Call them r1 .. r{nrows}. A cell with writing in it is a plate appearance by that slot's batter; empty cells mean the batter did not come up in this column. A column can be the continuation of the previous inning when the batting order went around, and a lineup longer than {nrows} batters can write its extra batters in the following column.
+
+Each cell has a small diamond. Its four corners are the bases:
+- lower-right corner: how the batter reached first base (or nothing if he was out)
+- upper-right corner: second base
+- upper-left corner: third base
+- lower-left corner: home
+
+How this scorer writes:
+- A number in parentheses at a corner, like (4), means the runner reached that base during the plate appearance of batting-order slot 4. It is always a slot that batted after this cell's batter in the same inning, so it is usually larger than the row number, wrapping around to small numbers after the last slot.
+- "S" at a corner means he stole that base; "PB" means he advanced on a passed ball.
+- A small circle in the centre means he scored. A cursive ℓ means he reached base and was left on base.
+- Roman numerals I, II, III are the first, second and third out of the inning (for the batter or for a runner).
+- "/" with a fielder number is a hit; a fielder number with an arc over it is a fly out; with a cup under it, a grounder; "E" an error; "B" a walk; "DB" hit by pitch; "BK" a balk; "K" a strikeout; "//" ends the inning.
+
+Task: for every cell r1 .. r{nrows}, read the marks at the upper-right (UR), upper-left (UL) and lower-left (LL) corners of the diamond. A corner value is an integer batting-order slot, or "S", or "PB". Leave out corners with no such mark. Use the game logic above to check your reading of faint or ambiguous digits, but report what is written.
+
+Answer with JSON only, no other text, in this form:
+{"cells": {"r3": {"UR": 4, "UL": 5}, "r5": {"UR": 6}}}
+Include only cells that have at least one corner mark. If no cell has one, answer {"cells": {}}.

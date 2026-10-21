@@ -1,0 +1,32 @@
+You are reading one column of a hand-kept Japanese amateur baseball scorebook.
+
+The image is one inning column of the scoring grid. The top cell is the printed inning number (the scorer sometimes crosses it out and writes another number by hand). Below it are {nrows} cells, one per batting-order slot: the first cell under the header is slot 1, the next is slot 2, and so on down to slot {nrows}. Call them r1 .. r{nrows}. A cell with writing in it is a plate appearance by that slot's batter; empty cells mean the batter did not come up in this column. A column can be the continuation of the previous inning when the batting order went around, and a lineup longer than {nrows} batters can write its extra batters in the following column.
+
+Each cell has a small diamond. Its four corners are the bases:
+- lower-right corner: how the batter reached first base (or nothing if he was out)
+- upper-right corner: second base
+- upper-left corner: third base
+- lower-left corner: home
+
+How this scorer writes:
+- A number in parentheses at a corner, like (4), means the runner reached that base during the plate appearance of batting-order slot 4.
+- "S" at a corner means he stole that base; "PB" means he advanced on a passed ball.
+- A small circle in the centre means he scored. A cursive ℓ means he reached base and was left on base.
+- Roman numerals I, II, III are the first, second and third out of the inning. The scorer writes the numeral in the cell of the player who was put out, whether he was out as the batter or later as a runner.
+- "/" with a fielder number is a hit; a fielder number with an arc over it is a fly out; with a cup under it, a grounder; "E" an error; "B" a walk; "DB" hit by pitch; "BK" a balk; "K" a strikeout; "//" ends the inning. A traced line along the base paths shows the bases the runner took, including bases he took on later plays, so a full trace does not by itself mean a home run.
+- Player names, substitution notes, tiebreak notes and runners placed on base by a tiebreak rule are not plate appearances.
+
+Task: for every cell r1 .. r{nrows}, report:
+- "pa": true if the cell records a plate appearance, false if it is empty.
+- "result" (only when pa is true): how this plate appearance ended for the batter --
+  "out" if the batter was put out in this plate appearance (strikeout, fly out, ground out, etc.);
+  otherwise how he reached base: "single", "double", "triple", "home_run", "walk", "hit_by_pitch", "error", or "other_reach" (fielder's choice, dropped third strike, anything else). Call it "triple" or "home_run" only when he reached that base on his own hit, with no parenthesised slot number on the bases he took. A batter who reached and was put out later as a runner still counts as having reached.
+- "strikeout" (only when pa is true): true if the plate appearance was a strikeout ("K", including a dropped third strike where he reached), else false.
+- "numeral" (only when pa is true): the Roman numeral written in the cell, as written (usually "I", "II" or "III"), or null if there is none.
+- "scored" (only when pa is true): true if this player crossed home plate in this inning, as the batter or later as a runner -- shown by the small circle in the centre of the diamond, or by a mark at the lower-left (home) corner; false otherwise (out, left on base, or still on base when the inning ended).
+- "left_on_base" (only when pa is true): true if the cell shows the cursive ℓ (reached base and was stranded), else false.
+
+Use the game logic above to check faint or ambiguous marks, but report what is written.
+
+Answer with JSON only, no other text, in this form, with one entry for every cell r1 .. r{nrows}:
+{"cells": {"r1": {"pa": true, "result": "out", "strikeout": true, "numeral": "I", "scored": false, "left_on_base": false}, "r2": {"pa": true, "result": "single", "strikeout": false, "numeral": null, "scored": true, "left_on_base": false}, "r3": {"pa": false}}}
