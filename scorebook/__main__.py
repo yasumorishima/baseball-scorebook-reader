@@ -32,9 +32,9 @@ def run(photo, sheet, reader, facts_kind=FACTS_KIND):
     cols = grid.columns(photo)
     readings = []
     for c in cols:
-        # facts_v2 answers "scored" itself, so the corners question is not asked (13 calls a sheet, not 26;
-        # same numbers on 33 sheets, experiments/assembly_2026-10-21 C1)
-        corners = reader.read("corners", sheet, c) if facts_kind == "facts" else {}
+        # facts_v2 answers "scored" itself; the corners still give RBI and stolen bases
+        # (experiments/rbi_sb_2026-10-22), so both questions are asked (26 calls a sheet)
+        corners = reader.read("corners", sheet, c) or {}
         readings.append((c.index, reader.read(facts_kind, sheet, c), corners))
     pas = game.assemble(readings)
     out = game.summary(pas)
@@ -53,11 +53,11 @@ def render(res):
              "inning | " + " ".join("%2d" % (i + 1) for i in range(len(runs))) + " |  R  H",
              "runs   | " + " ".join("%2d" % r for r in runs) + " | %2d %2d" % (res["R"], res["H"]),
              "",
-             "slot  PA AB  H 2B 3B HR BB HBP ROE SO  R   AVG   OBP   SLG"]
+             "slot  PA AB  H 2B 3B HR RBI BB HBP ROE SO SB  R   AVG   OBP   SLG"]
     for b in res["batting"]:
-        lines.append("%4d %3d %2d %2d %2d %2d %2d %2d %3d %3d %2d %2d %5s %5s %5s" % (
-            b["slot"], b["PA"], b["AB"], b["H"], b["doubles"], b["triples"], b["HR"],
-            b["BB"], b["HBP"], b["ROE"], b["SO"], b["R"], fmt(b["AVG"]), fmt(b["OBP"]), fmt(b["SLG"])))
+        lines.append("%4d %3d %2d %2d %2d %2d %2d %3d %2d %3d %3d %2d %2d %2d %5s %5s %5s" % (
+            b["slot"], b["PA"], b["AB"], b["H"], b["doubles"], b["triples"], b["HR"], b["RBI"],
+            b["BB"], b["HBP"], b["ROE"], b["SO"], b["SB"], b["R"], fmt(b["AVG"]), fmt(b["OBP"]), fmt(b["SLG"])))
     return "\n".join(lines)
 
 

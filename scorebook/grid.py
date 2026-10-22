@@ -52,3 +52,15 @@ def header(image_path):
     if not ok:
         raise RuntimeError("could not encode header")
     return buf.tobytes()
+
+
+def lineup(image_path):
+    """The lineup columns left of the grid (positions, names, jersey numbers), as PNG bytes.
+    Holds real names: never store it or send it anywhere public."""
+    img, cols, rows = detect(image_path)
+    H, W = img.shape[:2]
+    crop = img[max(0, rows[0][0] - MARGIN):min(H, rows[-1][1] + MARGIN), 0:min(W, cols[0][0] + 4)]
+    ok, buf = cv2.imencode(".png", crop)
+    if not ok:
+        raise RuntimeError("could not encode lineup")
+    return buf.tobytes()

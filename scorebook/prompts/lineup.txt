@@ -1,0 +1,11 @@
+You are reading the lineup part of one sheet of a hand-kept Japanese amateur baseball scorebook.
+
+The image is the left side of the scoring grid. Each batting-order slot has a band of three thin rows (the printed row labels are like "1 / 11 / 21" for slot 1, "2 / 12 / 22" for slot 2, and so on; a tenth slot can be labelled "39 / 49 / 59" or similar). In each band the scorer writes the starting player on the top row and any player who came in later for that slot on the rows below. Columns: シート (fielding position numbers, which can change during the game), 打ち方 (batting side, often empty), the player's name, and 背番号 (jersey number, often empty). A substitute is often written with the inning he came in, like "○○(5回)" or "5回から" or "打席から".
+
+Task: for every slot band from the top, list the players written in it, top to bottom (starter first), as JSON:
+{"slots": [{"slot": 1, "players": [{"name": "...", "jersey": 10, "from_inning": null}]}, ...]}
+- "name": the name exactly as written (kanji/kana), without the inning note; null if no name but a jersey number.
+- "jersey": the jersey number written for that player as an integer, or null.
+- "from_inning": for a substitute, the inning he came in if it is written (integer), else null. The starter has null.
+- Do not list position changes of the same player as new players. Leave out empty bands.
+Report what is written; do not guess names. Reply with the JSON only.

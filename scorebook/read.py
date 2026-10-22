@@ -19,14 +19,16 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 MODEL = os.environ.get("SB_MODEL", "claude-opus-5-5")
 MAX_TOKENS = 16000
+EFFORT = os.environ.get("SB_EFFORT")  # low|medium|high|xhigh|max; unset = the model's default (medium on Opus 5.5)
 API_URL = "https://api.anthropic.com/v1/messages"
 
 FACTS_PROMPT = open(os.path.join(HERE, "prompts", "facts.txt"), encoding="utf-8").read()
 CORNERS_PROMPT = open(os.path.join(HERE, "prompts", "corners.txt"), encoding="utf-8").read()
 FACTS_V2_PROMPT = open(os.path.join(HERE, "prompts", "facts_v2.txt"), encoding="utf-8").read()
 HEADER_PROMPT = open(os.path.join(HERE, "prompts", "header.txt"), encoding="utf-8").read()
+LINEUP_PROMPT = open(os.path.join(HERE, "prompts", "lineup.txt"), encoding="utf-8").read()
 
-KINDS = ("facts", "facts_v2", "corners", "header")
+KINDS = ("facts", "facts_v2", "corners", "header", "lineup")
 
 
 def facts_request(png, nrows, prompt=FACTS_PROMPT):
@@ -63,7 +65,21 @@ def header_request(png, nrows=0):
     }
 
 
-REQUESTS = {"facts": facts_request, "facts_v2": facts_v2_request, "header": header_request}
+def lineup_request(png, nrows=0):
+    """The lineup columns (names, jersey numbers, substitutes): one call per sheet (2026-10-22)."""
+    img = base64.b64encode(png).decode()
+    return {
+        "model": MODEL,
+        "max_tokens": MAX_TOKENS,
+        "thinking": {"type": "adaptive"},
+        "messages": [{"role": "user", "content": [
+            {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": img}},
+            {"type": "text", "text": LINEUP_PROMPT},
+        ]}],
+    }
+
+
+REQUESTS = {"facts": facts_request, "facts_v2": facts_v2_request, "header": header_request, "lineup": lineup_request}
 
 
 def corners_request(png, nrows):
@@ -113,7 +129,14 @@ def parse_header(resp):
     return rows if isinstance(rows, list) else None
 
 
-PARSERS = {"header": parse_header}
+def parse_lineup(resp):
+    """[{"slot": n, "players": [{"name", "jersey", "from_inning"}, ...]}, ...]; None if unusable."""
+    obj = reply_json(resp)
+    slots = obj.get("slots") if obj else None
+    return slots if isinstance(slots, list) else None
+
+
+PARSERS = {"header": parse_header, "lineup": parse_lineup}
 
 
 class ReplayReader:
@@ -152,8 +175,11 @@ class ApiReader:
             with open(path, encoding="utf-8") as f:
                 return PARSERS.get(kind, parse_reply)(json.load(f))
         build = REQUESTS.get(kind, corners_request)
-        resp = self._post(build(column.png, column.nrows))
-        resp["_sent"] = {"model": MODEL, "thinking": "adaptive"}
+        body = build(column.png, column.nrows)
+        if EFFORT:
+            body["output_config"] = {"effort": EFFORT}
+        resp = self._post(body)
+        resp["_sent"] = {"model": MODEL, "thinking": "adaptive", "effort": EFFORT or "default"}
         with open(path, "w", encoding="utf-8") as f:
             json.dump(resp, f, ensure_ascii=False)
         self.usage.append(resp.get("usage", {}))

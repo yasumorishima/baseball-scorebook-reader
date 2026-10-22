@@ -34,7 +34,12 @@ def main(argv=None):
         if keep and sheet not in keep:
             continue
         # header: one crop per sheet (the line-score box), saved as <sheet>_ch.json
-        crops = [grid.Column("h", grid.header(g["image"]), 0)] if a.kind == "header" else grid.columns(g["image"])
+        if a.kind == "header":
+            crops = [grid.Column("h", grid.header(g["image"]), 0)]
+        elif a.kind == "lineup":  # holds real names: the cache dir must stay private
+            crops = [grid.Column("l", grid.lineup(g["image"]), 0)]
+        else:
+            crops = grid.columns(g["image"])
         for c in crops:
             done = os.path.exists(os.path.join(a.cache_dir, a.kind, f"{sheet}_c{c.index}.json"))
             jobs.append((sheet, c, done))

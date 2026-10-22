@@ -143,6 +143,8 @@ class BattingLine:
     ROE: int = 0
     R: int = 0
     SO: int = 0
+    RBI: int = 0  # from the corner marks (rbi_sb), 0 when corners were not read
+    SB: int = 0
     unknown: int = 0
 
     def add(self, p):
@@ -171,10 +173,35 @@ class BattingLine:
         return {"AVG": avg, "OBP": obp, "SLG": slg}
 
 
+def rbi_sb(pas):
+    """RBI and stolen bases per slot from the corner marks (experiments/rbi_sb_2026-10-22:
+    92% / 93% of slots equal to the team site on 18 games).
+    RBI of slot k = runners whose home (LL) corner says k in an inning where k batted, plus 1 for
+    the batter's own home run (unless his LL already says k). SB = "S" marks at his corners."""
+    rbi, sb = {}, {}
+    batted = {}
+    for p in pas:
+        batted.setdefault(p.inning, set()).add(p.slot)
+    for p in pas:
+        c = p.corners or {}
+        n = sum(1 for v in c.values() if v == "S")
+        if n:
+            sb[p.slot] = sb.get(p.slot, 0) + n
+        home = c.get("LL")
+        if isinstance(home, int) and home in batted.get(p.inning, ()):
+            rbi[home] = rbi.get(home, 0) + 1
+        if p.result == "home_run" and home != p.slot:
+            rbi[p.slot] = rbi.get(p.slot, 0) + 1
+    return rbi, sb
+
+
 def batting(pas):
     lines = {}
     for p in pas:
         lines.setdefault(p.slot, BattingLine(p.slot)).add(p)
+    rbi, sb = rbi_sb(pas)
+    for slot, line in lines.items():
+        line.RBI, line.SB = rbi.get(slot, 0), sb.get(slot, 0)
     return [lines[k] for k in sorted(lines)]
 
 
