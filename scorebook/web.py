@@ -1,7 +1,7 @@
 """A small web page: photo of a scorebook sheet -> game result and batting lines, with what to check.
 
 Usage (repo root):
-  python -m scorebook.web [--port 8000]
+  python -m scorebook.web [--port 8765]
 
 - Stored sheets (eval/manifests/games33.json) replay saved Claude replies: no key, no cost.
 - Uploading a new photo calls the Anthropic API (SCOREBOOK_API_KEY or ANTHROPIC_API_KEY):
@@ -555,7 +555,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="python -m scorebook.web")
-    ap.add_argument("--port", type=int, default=8000)
+    ap.add_argument("--port", type=int, default=8765)  # 8000 is taken on the owner's Pi
     ap.add_argument("--host", default="127.0.0.1")
     a = ap.parse_args(argv)
     print(f"http://{a.host}:{a.port}/", flush=True)

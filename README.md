@@ -31,7 +31,7 @@ Built with Claude: Japan 2026 の作品です。
 ```
 pip install numpy==2.4.6 opencv-python-headless==5.0.0.93
 export SCOREBOOK_API_KEY=...   # Anthropic API キー
-python -m scorebook.web        # http://127.0.0.1:8000/ で写真を上げる（1 枚 28 回の呼び出し・約 20 秒）
+python -m scorebook.web        # http://127.0.0.1:8765/ で写真を上げる（1 枚 28 回の呼び出し・約 20 秒）
 python -m scorebook <写真> --sheet <名前> --api   # コマンドラインで 1 枚
 ```
 モデルは `claude-opus-5-5`（adaptive thinking）。返答は `runs/api-cache/` に写真の md5 で保存し、同じ写真は二度と呼びません。
