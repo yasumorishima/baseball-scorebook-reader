@@ -27,6 +27,13 @@ Built with Claude: Japan 2026 の作品です。
 - 計算した得点表が外れた 8 試合は、8 試合とも用紙の得点表と違っていました。用紙側も、タイブレークや書きかけで違うことがあります（7/25）。
 - 限界：1 種類の印刷用紙・1 チームの記録者たちの書き方でしか測っていません。選手名・途中交代は扱いません。11 人目の打者の書き方、インクの無い回には未対応です。
 
+## 生成 AI を使わずに読む部品（`cv/`）
+OpenCV と NumPy だけでマスの中の印を読む、研究開発の部品も置いています（格子の検出・手書きの取り出し・アウトの数字・塁の区画の番号・野球の決まりと合わせて解くソルバー）。正解データと画像は含まないので、そのままでは動きません。説明は [`cv/README.md`](cv/README.md)。
+
+## スコアブックを読む・まとめる人向けの資料
+- [手書きのスコアブックの記号の読み方](https://github.com/yasumorishima/baseball-scorebook-ocr-docs/blob/main/notation.md)
+- [スコアブックから個人成績をまとめる手順](https://github.com/yasumorishima/baseball-scorebook-ocr-docs/blob/main/stats-from-scorebook.md)
+
 ## 動かし方
 ```
 pip install numpy==2.4.6 opencv-python-headless==5.0.0.93

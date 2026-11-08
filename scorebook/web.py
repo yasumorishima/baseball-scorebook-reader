@@ -338,7 +338,7 @@ def own_box_row(res):
 
 
 def site_html(res, partner=None):
-    """What to type into the team site (yokohama-funnies: /edit/results and /edit/game-stats)."""
+    """What to type into the team site (its results page and per-game stats page)."""
     i, own = own_box_row(res)
     us = ",".join(str(v) for v in res["line_score"])
     them, them_src = "", ""
@@ -378,7 +378,7 @@ def sheet_html(res, k, partner=None):
             "<h2>試合結果（回ごとの得点）</h2>" + line_score_html(res) +
             "<h2>確認してほしいところ</h2>" + checks_html(res) +
             "<h2>打順ごとの成績</h2>" + batting_html(res, k) +
-            "<h2>サイト入力用（横浜ファニーズ）</h2>" + site_html(res, partner) +
+            "<h2>チームのサイト入力用</h2>" + site_html(res, partner) +
             "<p class=mut>名前の欄の薄い文字は、用紙から読んだ名前です（サイトの選手と合うのは 7 割ほどなので、確かめて入れてください）。"
             "途中交代は同じ打順にまとめています（交代がある打順には印が付きます）。</p>"
             "<h2>読んだ格子（名前の欄は写していません）</h2>"
