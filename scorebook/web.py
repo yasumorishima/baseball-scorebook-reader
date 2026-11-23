@@ -13,8 +13,10 @@ What the page shows, and why (experiments/*/RESULTS.md, measured on cloud):
   top, side by side, with the innings that differ marked. Neither is picked automatically: when
   they differ the computed one was wrong on 8/8 sheets, but the box also differs on 7/25 sheets
   whose computed line score is right (tiebreaks, a partly filled box, a slip of the pen).
-- cells where two independent reads disagree (only when a second read exists): 61% of those
-  cells were wrong against 6% of the others; no disagreement does NOT mean correct.
+- cells to check (only when a second read exists): where the second read disagrees with the first, or
+  where the second read says it is unsure of a field (experiments/flag_2026-11-23: on the 33 sheets
+  these marks caught 77 of the 92 wrong cells with 223 marks, about 7 per sheet; the older second read
+  without "unsure" caught 28 with 46 marks). No mark does NOT mean correct.
 - the grid image without the name column (names are never shown).
 """
 import argparse
@@ -37,13 +39,15 @@ from .__main__ import REPLAY_CORNERS, REPLAY_FACTS_V2, ROOT
 
 # lineup replies hold real names: private repo only (the public export has no replies)
 LINEUP_DIR = os.path.join(ROOT, "experiments/lineup_2026-10-22/runs/lineup")
-# stored sheets: (label, manifest, facts_v2 replies, second read or None, header replies)
+SECOND_KIND = "facts_v2_unsure"  # the second read (experiments/flag_2026-11-23)
+# stored sheets: (label, manifest, facts_v2 replies, second read (facts_v2_unsure) or None, header replies)
 STORED = [
     ("開発用の 33 枚（2 回分の読み）", os.path.join(ROOT, "eval/manifests/games33.json"), REPLAY_FACTS_V2,
-     os.path.join(ROOT, "experiments/facts_v2_repeat_2026-10-21/runs/facts_v2"),
+     os.path.join(ROOT, "experiments/flag_2026-11-23/runs/unsure"),
      os.path.join(ROOT, "experiments/header_2026-10-21/runs/header"), REPLAY_CORNERS, LINEUP_DIR),
     ("評価に使っていない 2 枚（2026-10-18）", os.path.join(ROOT, "eval/manifests/heldout_2026-10-18.json"),
-     os.path.join(ROOT, "experiments/heldout_v2_2026-10-21/runs/facts_v2"), None,
+     os.path.join(ROOT, "experiments/heldout_v2_2026-10-21/runs/facts_v2"),
+     os.path.join(ROOT, "experiments/flag_2026-11-23/runs/heldout_unsure"),
      os.path.join(ROOT, "experiments/heldout_v2_2026-10-21/runs/header"),
      os.path.join(ROOT, "experiments/heldout_2026-10-18/runs/raw1"), LINEUP_DIR),
 ]
@@ -99,7 +103,8 @@ def read_columns(reader, kind, sheet, cols):
 
 
 def disagreements(r1, r2):
-    """Cells where two reads differ: [(column, slot, what)]."""
+    """Cells to check: where the two reads differ, or the second read lists fields in "unsure".
+    [(column, slot, what)]; what holds the differing fields and "unsure:<field>" entries."""
     out = []
     for (col, a, _), (_, b, _) in zip(r1, r2):
         a, b = a or {}, b or {}
@@ -107,15 +112,18 @@ def disagreements(r1, r2):
             ca, cb = a.get(key) or {}, b.get(key) or {}
             if not isinstance(ca, dict) or not isinstance(cb, dict):
                 continue
+            unsure = [f"unsure:{f}" for f in (cb.get("unsure") or []) if isinstance(f, str)]
             if not ca.get("pa") and not cb.get("pa"):
+                if unsure:
+                    out.append((col, int(str(key).lstrip("r")), unsure))
                 continue
             if bool(ca.get("pa")) != bool(cb.get("pa")):
                 diff = ["pa"]
             else:
                 diff = (["result"] if ca.get("result") != cb.get("result") else []) + [
                     f for f in ("scored", "strikeout") if bool(ca.get(f)) != bool(cb.get(f))]
-            if diff:
-                out.append((col, int(str(key).lstrip("r")), diff))
+            if diff or unsure:
+                out.append((col, int(str(key).lstrip("r")), diff + unsure))
     return out
 
 
@@ -172,7 +180,7 @@ def analyse(photo, sheet, reader, reader2=None, header_reader=None):
     with cf.ThreadPoolExecutor(3) as ex:  # the reads run at the same time
         f1 = ex.submit(read_columns, reader, "facts_v2", sheet, cols)
         fc = ex.submit(read_columns, reader, "corners", sheet, cols)  # for RBI and stolen bases
-        f2 = ex.submit(read_columns, reader2, "facts_v2", sheet, cols) if reader2 else None
+        f2 = ex.submit(read_columns, reader2, SECOND_KIND, sheet, cols) if reader2 else None
         r1, rc, r2 = f1.result(), fc.result(), (f2.result() if f2 else None)
     # "scored" comes from facts_v2 (--scored read); the corners only feed RBI and stolen bases
     pas = game.assemble([(c, facts, corners or {}) for (c, facts, _), (_, corners, _) in zip(r1, rc)], "read")
@@ -308,11 +316,18 @@ def checks_html(res):
     if d is None:
         items.append("<span class=mut>2 回目の読みはありません（「2 回読む」で、読みが割れたマスを示せます）。</span>")
     elif d:
-        names = {"pa": "打席の有無", "result": "結果", "scored": "得点", "strikeout": "三振"}
-        items.append("2 回の読みが割れたマス（ここは誤りが多い）：<ul>" + "".join(
-            f"<li>{c + 1} 列目・{s} 番打者：{'・'.join(names[w] for w in what)}</li>" for c, s, what in d) + "</ul>")
+        names = {"pa": "打席の有無", "result": "結果", "scored": "得点", "strikeout": "三振",
+                 "numeral": "アウトの番号", "left_on_base": "残塁"}
+
+        def say(what):
+            split = [names.get(w, w) for w in what if not w.startswith("unsure:")]
+            unsure = [names.get(w[7:], w[7:]) for w in what if w.startswith("unsure:")]
+            return "・".join(([f"2 回の読みが割れた（{'・'.join(split)}）"] if split else [])
+                            + ([f"確かでない（{'・'.join(unsure)}）"] if unsure else []))
+        items.append(f"用紙で確かめるマス {len(d)} か所（ここは誤りが多い）：<ul>" + "".join(
+            f"<li>{c + 1} 列目・{s} 番打者：{html.escape(say(what))}</li>" for c, s, what in d) + "</ul>")
     else:
-        items.append("2 回の読みは全部のマスで一致しました（一致していても誤りはありえます）。")
+        items.append("確かめるマスはありません（2 回の読みが一致し、確かでない欄もなし。それでも誤りはありえます）。")
     return "<div class=box>" + "".join(f"<p>{i}</p>" for i in items) + "</div>"
 
 
@@ -475,7 +490,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(404, page("not found", "<p>その用紙はありません。</p>"))
             label, photo, fdir, f2dir, hdir, cdir, ldir = found
             reader = read.ReplayReader(None, cdir, facts_v2=fdir, lineup=ldir)
-            reader2 = read.ReplayReader(None, None, facts_v2=f2dir) if f2dir else None
+            reader2 = read.ReplayReader(None, None, facts_v2_unsure=f2dir) if f2dir else None
             hreader = read.ReplayReader(None, None, header=hdir) if hdir else None
             try:
                 res = analyse(photo, sheet, reader, reader2, hreader)

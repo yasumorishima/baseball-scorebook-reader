@@ -25,10 +25,12 @@ API_URL = "https://api.anthropic.com/v1/messages"
 FACTS_PROMPT = open(os.path.join(HERE, "prompts", "facts.txt"), encoding="utf-8").read()
 CORNERS_PROMPT = open(os.path.join(HERE, "prompts", "corners.txt"), encoding="utf-8").read()
 FACTS_V2_PROMPT = open(os.path.join(HERE, "prompts", "facts_v2.txt"), encoding="utf-8").read()
+# the second read: facts_v2 plus "unsure" per cell (experiments/flag_2026-11-23, adopted 2026-11-23)
+FACTS_V2_UNSURE_PROMPT = open(os.path.join(HERE, "prompts", "facts_v2_unsure.txt"), encoding="utf-8").read()
 HEADER_PROMPT = open(os.path.join(HERE, "prompts", "header.txt"), encoding="utf-8").read()
 LINEUP_PROMPT = open(os.path.join(HERE, "prompts", "lineup.txt"), encoding="utf-8").read()
 
-KINDS = ("facts", "facts_v2", "corners", "header", "lineup")
+KINDS = ("facts", "facts_v2", "facts_v2_unsure", "corners", "header", "lineup")
 
 
 def facts_request(png, nrows, prompt=FACTS_PROMPT):
@@ -49,6 +51,11 @@ def facts_request(png, nrows, prompt=FACTS_PROMPT):
 def facts_v2_request(png, nrows):
     """facts plus strikeout / scored / left_on_base (2026-10-21); same layout as facts."""
     return facts_request(png, nrows, FACTS_V2_PROMPT)
+
+
+def facts_v2_unsure_request(png, nrows):
+    """facts_v2 plus an "unsure" list per cell: the tool's second read (experiments/flag_2026-11-23)."""
+    return facts_request(png, nrows, FACTS_V2_UNSURE_PROMPT)
 
 
 def header_request(png, nrows=0):
@@ -79,7 +86,7 @@ def lineup_request(png, nrows=0):
     }
 
 
-REQUESTS = {"facts": facts_request, "facts_v2": facts_v2_request, "header": header_request, "lineup": lineup_request}
+REQUESTS = {"facts": facts_request, "facts_v2": facts_v2_request, "facts_v2_unsure": facts_v2_unsure_request, "header": header_request, "lineup": lineup_request}
 
 
 def corners_request(png, nrows):

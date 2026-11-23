@@ -55,5 +55,19 @@ class Batting(unittest.TestCase):
         self.assertEqual(game.line_score(pas), [1])
 
 
+class PlacedRunners(unittest.TestCase):
+    def test_tiebreak_runners_score_without_batting(self):
+        # 6th inning tiebreak: slots 1 and 2 placed on base, both home on slot 4's hit (2026-05-10)
+        cols = [(0, {"r1": cell(numeral="I"), "r2": cell(numeral="II"), "r3": cell(numeral="III")}, {}),
+                (1, {"r1": {"pa": False}, "r2": {"pa": False}, "r3": cell(numeral="I"), "r4": cell("single")},
+                 {"r1": {"UR": 1, "LL": 4}, "r2": {"LL": 4}})]
+        pas = game.assemble(cols, placed=True)
+        self.assertEqual(game.line_score(pas), [0, 2])
+        lines = {b.slot: b for b in game.batting(pas)}
+        self.assertEqual((lines[1].PA, lines[1].R), (1, 1))  # one plate appearance (1st inning), one run
+        self.assertEqual(lines[4].RBI, 2)
+        self.assertEqual(game.line_score(game.assemble(cols, placed=False)), [0, 0])
+
+
 if __name__ == "__main__":
     unittest.main()

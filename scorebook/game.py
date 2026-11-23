@@ -47,14 +47,43 @@ def is_scored(cell, mark, mode="auto"):
     return corner or bool(read)
 
 
-def assemble(column_readings, scored_mode="auto", wrap_continues=False):
+PLACED_RUNNERS = True  # (experiments/rbi_tiebreak_2026-11-08) count runners placed without batting (tiebreak) who scored; see placed_runners()
+RBI_RULE = "v2"  # owner 2026-11-08: follow the rules (9.04). "v1": every home-corner slot number; "v2": not when that batter's PA was a strikeout,
+#                  an error or the third out (the run scored on another play: wild pitch, passed ball, steal)
+
+
+def placed_runners(facts, corners, col):
+    """Cells with no plate appearance whose home (LL) corner carries a batting-order slot: a runner put
+    on base without batting (tiebreak rule) who scored. Only in columns that have plate appearances."""
+    out = []
+    for key, mark in (corners or {}).items():
+        cell = (facts or {}).get(key)
+        if isinstance(cell, dict) and cell.get("pa"):
+            continue
+        if not isinstance(mark, dict) or not isinstance(mark.get("LL"), int) or isinstance(mark.get("LL"), bool):
+            continue
+        try:
+            slot = int(str(key).lstrip("r"))
+        except ValueError:
+            continue
+        out.append(PlateAppearance(slot=slot, column=col, result="placed", scored=True,
+                                   corners={k: v for k, v in mark.items() if k in ("UR", "UL", "LL")}))
+    return out
+
+
+def assemble(column_readings, scored_mode="auto", wrap_continues=False, placed=None):
     """column_readings: list of (column_index, facts_cells, corners_cells) in column order.
-    Returns the plate appearances with innings assigned."""
+    Returns the plate appearances with innings assigned (plus placed runners, result "placed",
+    when placed / PLACED_RUNNERS is on; they are not plate appearances)."""
+    placed = PLACED_RUNNERS if placed is None else placed
     pas = []
+    extra = {}
     for col, facts, corners in column_readings:
         facts = facts or {}
         corners = corners or {}
         col_pas = []
+        if placed:
+            extra[col] = placed_runners(facts, corners, col)
         for key, cell in facts.items():
             if not isinstance(cell, dict) or not cell.get("pa"):
                 continue
@@ -76,7 +105,15 @@ def assemble(column_readings, scored_mode="auto", wrap_continues=False):
             ))
         col_pas.sort(key=lambda p: p.slot)
         pas.append((col, col_pas))
-    return split_innings(pas, wrap_continues)
+    out = split_innings(pas, wrap_continues)
+    for col, runners in extra.items():
+        first = next((p for p in out if p.column == col), None)
+        if first is None:  # a column with no plate appearance: nothing to attach the runner to
+            continue
+        for r in runners:
+            r.inning = first.inning  # placed at the start of the inning, before the column's first batter
+            out.append(r)
+    return out
 
 
 def split_innings(columns, wrap_continues=False):
@@ -148,6 +185,9 @@ class BattingLine:
     unknown: int = 0
 
     def add(self, p):
+        if p.result == "placed":  # a runner put on base without batting: a run, not a plate appearance
+            self.R += bool(p.scored)
+            return
         self.PA += 1
         r = p.result
         if r in ("walk", "hit_by_pitch"):
@@ -173,15 +213,21 @@ class BattingLine:
         return {"AVG": avg, "OBP": obp, "SLG": slg}
 
 
-def rbi_sb(pas):
+def rbi_sb(pas, rule=None):
     """RBI and stolen bases per slot from the corner marks (experiments/rbi_sb_2026-10-22:
     92% / 93% of slots equal to the team site on 18 games).
     RBI of slot k = runners whose home (LL) corner says k in an inning where k batted, plus 1 for
     the batter's own home run (unless his LL already says k). SB = "S" marks at his corners."""
+    rule = rule or RBI_RULE
     rbi, sb = {}, {}
     batted = {}
+    no_rbi = {}  # (inning, slot): every PA of that batter in the inning was a strikeout, an error or the third out
     for p in pas:
+        if p.result == "placed":
+            continue
         batted.setdefault(p.inning, set()).add(p.slot)
+        bad = p.strikeout or p.result == "error" or p.out_numeral == 3
+        no_rbi[(p.inning, p.slot)] = no_rbi.get((p.inning, p.slot), True) and bad
     for p in pas:
         c = p.corners or {}
         n = sum(1 for v in c.values() if v == "S")
@@ -189,7 +235,8 @@ def rbi_sb(pas):
             sb[p.slot] = sb.get(p.slot, 0) + n
         home = c.get("LL")
         if isinstance(home, int) and home in batted.get(p.inning, ()):
-            rbi[home] = rbi.get(home, 0) + 1
+            if not (rule == "v2" and no_rbi.get((p.inning, home))):
+                rbi[home] = rbi.get(home, 0) + 1
         if p.result == "home_run" and home != p.slot:
             rbi[p.slot] = rbi.get(p.slot, 0) + 1
     return rbi, sb
@@ -198,6 +245,8 @@ def rbi_sb(pas):
 def batting(pas):
     lines = {}
     for p in pas:
+        if p.result == "placed" and p.slot not in lines:
+            lines[p.slot] = BattingLine(p.slot)
         lines.setdefault(p.slot, BattingLine(p.slot)).add(p)
     rbi, sb = rbi_sb(pas)
     for slot, line in lines.items():
